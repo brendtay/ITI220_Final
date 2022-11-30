@@ -53,48 +53,6 @@
 #define ONP6(x) (P6OUT |= (x))
 #define OFFP6(x) (P6OUT &= ~(x))
 
-//Button Pin 5.0
-P5DIR |= ~BIT0;
-P5OUT |= BIT0;
-P5IES |= BIT0;
-P5IFG &= ~BIT0;
-P5IE |= BIT0;
-//Button Pin 5.1
-P5DIR |= ~BIT1;
-P5OUT |= BIT1;
-P5IES |= BIT1;
-P5IFG &= ~BIT1;
-P5IE |= BIT1;
-//Button Pin 5.2
-P5DIR |= ~BIT2;
-P5OUT |= BIT2;
-P5IES |= BIT2;
-P5IFG &= ~BIT2;
-P5IE |= BIT2;
-//Button Pin 5.3
-P5DIR |= ~BIT3;
-P5OUT |= BIT3;
-P5IES |= BIT3;
-P5IFG &= ~BIT3;
-P5IE |= BIT3;
-//Button Pin 5.4
-P5DIR |= ~BIT4;
-P5OUT |= BIT4;
-P5IES |= BIT4;
-P5IFG &= ~BIT4;
-P5IE |= BIT4;
-//Button Pin 5.5
-P5DIR |= ~BIT5;
-P5OUT |= BIT5;
-P5IES |= BIT5;
-P5IFG &= ~BIT5;
-P5IE |= BIT5;
-//Button Pin 3.1
-P3DIR |= ~BIT1;
-P3OUT |= BIT1;
-P3IES |= BIT1;
-P3IFG &= ~BIT1;
-P3IE |= BIT1;
 
 void setup();
 void allOff();
@@ -103,13 +61,12 @@ int main(void)
 {
 	WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
 	
+
 	setup();
 
-	//Just a test of P1 BIT 1 & P1 BIT 2 & P13 BIT 1
-	OFFP1(P1S1);
-	ONP1(P1S2);
-	ONP4(P2S8);
+
 	return 0;
+
 }
 void setup(){
     PM5CTL0 &= ~LOCKLPM5;
@@ -119,6 +76,50 @@ void setup(){
 
     SETP6(P2S1, P2S2, P2S3, P2S4, P2S5);
     SETP4(P2S6, P2S7, P2S8, P2S9);
+
+    //Button Pin 5.0
+    P5DIR |= ~BIT0;
+    P5OUT |= BIT0;
+    P5IES |= BIT0;
+    P5IFG &= ~BIT0;
+    P5IE |= BIT0;
+    //Button Pin 5.1
+    P5DIR |= ~BIT1;
+    P5OUT |= BIT1;
+    P5IES |= BIT1;
+    P5IFG &= ~BIT1;
+    P5IE |= BIT1;
+    //Button Pin 5.2
+    P5DIR |= ~BIT2;
+    P5OUT |= BIT2;
+    P5IES |= BIT2;
+    P5IFG &= ~BIT2;
+    P5IE |= BIT2;
+    //Button Pin 5.3
+    P5DIR |= ~BIT3;
+    P5OUT |= BIT3;
+    P5IES |= BIT3;
+    P5IFG &= ~BIT3;
+    P5IE |= BIT3;
+    //Button Pin 5.4
+    P5DIR |= ~BIT4;
+    P5OUT |= BIT4;
+    P5IES |= BIT4;
+    P5IFG &= ~BIT4;
+    P5IE |= BIT4;
+    //Button Pin 5.5
+    P5DIR |= ~BIT5;
+    P5OUT |= BIT5;
+    P5IES |= BIT5;
+    P5IFG &= ~BIT5;
+    P5IE |= BIT5;
+    //Button Pin 3.1
+    P3DIR |= ~BIT1;
+    P3OUT |= BIT1;
+    P3IES |= BIT1;
+    P3IFG &= ~BIT1;
+    P3IE |= BIT1;
+
 
     allOff();
 }
