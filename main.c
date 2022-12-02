@@ -1,8 +1,9 @@
 #include <msp430.h> 
 #include <stdbool.h>
-//defines leds
 
+//defines leds
 //(Name = Player Number + Spot (1-9) number)
+//Player 1 (Pin 1.1 - 1.7 & Pin 2.0 - 2.1)
 //Pin 1
 #define P1S1 BIT1
 #define P1S2 BIT2
@@ -15,7 +16,7 @@
 #define P1S8 BIT0
 #define P1S9 BIT1
 
-//Player 2
+//Player 2 (Pin 6.0 - 6.4 & Pin 4.0, 4.4, 4.6, 4.7)
 //Pin 6
 #define P2S1 BIT0
 #define P2S2 BIT1
@@ -56,10 +57,11 @@
 
 void setup();
 void allOff();
-void allOffNotSelected();
 
-volatile int pos = 0;
-//bool confrim = true;
+
+volatile int p1pos = 0;
+volatile int p2pos = 0;
+bool confrim = false;
 
 int main(void)
 {
@@ -75,14 +77,14 @@ int main(void)
     //ONP1(P1S7);
     while (1){
         allOff();
-
-        if(pos < 1){
-            pos = 1;
+        //player 1 led pos logic
+        if(p1pos < 1){
+            p1pos = 1;
         }
-        if(pos > 9){
-            pos = 9;
+        if(p1pos > 9){
+            p1pos = 9;
         }
-        switch(pos){
+        switch(p1pos){
         case 1:
             ONP1(P1S1);
             break;
@@ -112,6 +114,43 @@ int main(void)
             break;
         }
 
+        //player 2 led pos logic
+        if(p2pos < 1){
+            p2pos = 1;
+        }
+        if(p2pos > 9){
+            p2pos = 9;
+        }
+        switch(p2pos){
+        case 1:
+            ONP6(P2S1);
+            break;
+        case 2:
+            ONP6(P2S2);
+            break;
+        case 3:
+            ONP6(P2S3);
+            break;
+        case 4:
+            ONP6(P2S4);
+            break;
+        case 5:
+            ONP6(P2S5);
+            break;
+        case 6:
+            ONP4(P2S6);
+            break;
+        case 7:
+            ONP4(P2S7);
+            break;
+        case 8:
+            ONP4(P2S8);
+            break;
+        case 9:
+            ONP4(P2S9);
+            break;
+        }
+
 
         //if (gameOver == 0){
 
@@ -120,12 +159,12 @@ int main(void)
 
         //}
     }
-
     return 0;
-
 }
 void setup(){
+
     PM5CTL0 &= ~LOCKLPM5;
+
     //Set output
     SETP1(P1S1, P1S2, P1S3, P1S4, P1S5, P1S6, P1S7);
     SETP2(P1S8, P1S9);
@@ -133,36 +172,39 @@ void setup(){
     SETP6(P2S1, P2S2, P2S3, P2S4, P2S5);
     SETP4(P2S6, P2S7, P2S8, P2S9);
 
+
     //Button Pin 3.1
     P3DIR |= ~BIT1;
     P3OUT |= BIT1;
     P3IES |= BIT1;
     P3IFG &= ~BIT1;
     P3IE |= BIT1;
+
     //Button Pin 3.2
     P3DIR |= ~BIT2;
     P3OUT |= BIT2;
     P3IES |= BIT2;
     P3IFG &= ~BIT2;
     P3IE |= BIT2;
+
     //Button Pin 3.3
     P3DIR |= ~BIT3;
     P3OUT |= BIT3;
     P3IES |= BIT3;
     P3IFG &= ~BIT3;
     P3IE |= BIT3;
+
     //Button Pin 3.4
     P3DIR |= ~BIT4;
     P3OUT |= BIT4;
     P3IES |= BIT4;
     P3IFG &= ~BIT4;
     P3IE |= BIT4;
+
     //Button Pin 3.5
     P3DIR |= ~BIT5;
     P3OUT |= BIT5;
     P3IES |= BIT5;
-    P3REN |= BIT5;
-
     P3IFG &= ~BIT5;
     P3IE |= BIT5;
 
@@ -172,6 +214,8 @@ void setup(){
     P3IES |= BIT6;
     P3IFG &= ~BIT6;
     P3IE |= BIT6;
+
+
     // Setup Timer0_B   (this was fun, thanks msp430fr2355.h)
     TB0CTL = TBSSEL_1 | CNTL_1 | MC_2 | ID_3 | TBCLR | TBIE;
 
@@ -217,34 +261,31 @@ void allOff(){
     OFFP4(P2S9);
 }
 
-void allOfNotSelected(){
-
-}
-// Pin 3 button interrupts
+// Pin 3 button interrupts bit 1-6
 #pragma vector = PORT3_VECTOR;
 __interrupt void P5_ISR(void){
     if (P3IFG & BIT1){
-        pos++;         // increment position on the board (no variable yet)
+        p1pos++;         // increment position on the board (no variable yet)
         P3IFG &= ~BIT1;
     }
     if (P3IFG & BIT2){
-        pos--;
+        p1pos--;
         P3IFG &= ~BIT2;
     }
     if (P3IFG & BIT3){
-        pos++;
+        confrim = true;
         P3IFG &= ~BIT3;
     }
     if (P3IFG & BIT4){
-        pos--;
+        p2pos--;
         P3IFG &= ~BIT4;
     }
     if (P3IFG & BIT5){
-        pos--;
+        p2pos--;
         P3IFG &= ~BIT6;
     }
     if (P3IFG & BIT6){
-        pos--;
+        confrim = true;
         P3IFG &= ~BIT6;
     }
 }
