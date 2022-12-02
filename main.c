@@ -1,5 +1,5 @@
 #include <msp430.h> 
-
+#include <stdbool.h>
 //defines leds
 
 //(Name = Player Number + Spot (1-9) number)
@@ -12,8 +12,8 @@
 #define P1S6 BIT6
 #define P1S7 BIT7
 //Pin 2
-#define P1S8 BIT1
-#define P1S9 BIT2
+#define P1S8 BIT0
+#define P1S9 BIT1
 
 //Player 2
 //Pin 6
@@ -56,16 +56,72 @@
 
 void setup();
 void allOff();
+void allOffNotSelected();
+
+volatile int pos = 0;
+//bool confrim = true;
 
 int main(void)
 {
-	WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
-	
+    //bool gameOver = 0;
+    //bool player = 0;      // 0 is player one, 1 is player two
 
-	setup();
+    WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
+
+    __enable_interrupt();
+
+    setup();
+
+    //ONP1(P1S7);
+    while (1){
+        allOff();
+
+        if(pos < 1){
+            pos = 1;
+        }
+        if(pos > 9){
+            pos = 9;
+        }
+        switch(pos){
+        case 1:
+            ONP1(P1S1);
+            break;
+        case 2:
+            ONP1(P1S2);
+            break;
+        case 3:
+            ONP1(P1S3);
+            break;
+        case 4:
+            ONP1(P1S4);
+            break;
+        case 5:
+            ONP1(P1S5);
+            break;
+        case 6:
+            ONP1(P1S6);
+            break;
+        case 7:
+            ONP1(P1S7);
+            break;
+        case 8:
+            ONP2(P1S8);
+            break;
+        case 9:
+            ONP2(P1S9);
+            break;
+        }
 
 
-	return 0;
+        //if (gameOver == 0){
+
+        //}
+        //else{
+
+        //}
+    }
+
+    return 0;
 
 }
 void setup(){
@@ -77,49 +133,62 @@ void setup(){
     SETP6(P2S1, P2S2, P2S3, P2S4, P2S5);
     SETP4(P2S6, P2S7, P2S8, P2S9);
 
-    //Button Pin 5.0
-    P5DIR |= ~BIT0;
-    P5OUT |= BIT0;
-    P5IES |= BIT0;
-    P5IFG &= ~BIT0;
-    P5IE |= BIT0;
-    //Button Pin 5.1
-    P5DIR |= ~BIT1;
-    P5OUT |= BIT1;
-    P5IES |= BIT1;
-    P5IFG &= ~BIT1;
-    P5IE |= BIT1;
-    //Button Pin 5.2
-    P5DIR |= ~BIT2;
-    P5OUT |= BIT2;
-    P5IES |= BIT2;
-    P5IFG &= ~BIT2;
-    P5IE |= BIT2;
-    //Button Pin 5.3
-    P5DIR |= ~BIT3;
-    P5OUT |= BIT3;
-    P5IES |= BIT3;
-    P5IFG &= ~BIT3;
-    P5IE |= BIT3;
-    //Button Pin 5.4
-    P5DIR |= ~BIT4;
-    P5OUT |= BIT4;
-    P5IES |= BIT4;
-    P5IFG &= ~BIT4;
-    P5IE |= BIT4;
-    //Button Pin 5.5
-    P5DIR |= ~BIT5;
-    P5OUT |= BIT5;
-    P5IES |= BIT5;
-    P5IFG &= ~BIT5;
-    P5IE |= BIT5;
     //Button Pin 3.1
     P3DIR |= ~BIT1;
     P3OUT |= BIT1;
     P3IES |= BIT1;
     P3IFG &= ~BIT1;
     P3IE |= BIT1;
+    //Button Pin 3.2
+    P3DIR |= ~BIT2;
+    P3OUT |= BIT2;
+    P3IES |= BIT2;
+    P3IFG &= ~BIT2;
+    P3IE |= BIT2;
+    //Button Pin 3.3
+    P3DIR |= ~BIT3;
+    P3OUT |= BIT3;
+    P3IES |= BIT3;
+    P3IFG &= ~BIT3;
+    P3IE |= BIT3;
+    //Button Pin 3.4
+    P3DIR |= ~BIT4;
+    P3OUT |= BIT4;
+    P3IES |= BIT4;
+    P3IFG &= ~BIT4;
+    P3IE |= BIT4;
+    //Button Pin 3.5
+    P3DIR |= ~BIT5;
+    P3OUT |= BIT5;
+    P3IES |= BIT5;
+    P3REN |= BIT5;
 
+    P3IFG &= ~BIT5;
+    P3IE |= BIT5;
+
+    //Button Pin 3.6
+    P3DIR |= ~BIT6;
+    P3OUT |= BIT6;
+    P3IES |= BIT6;
+    P3IFG &= ~BIT6;
+    P3IE |= BIT6;
+    // Setup Timer0_B   (this was fun, thanks msp430fr2355.h)
+    TB0CTL = TBSSEL_1 | CNTL_1 | MC_2 | ID_3 | TBCLR | TBIE;
+
+    /*
+        Timer B = ACLK (32khz) | Count (0FFFh) | Continuous mode | Divider (8) | Clear Timer Value | Interrupt Enable (might need to move this later to when the game starts)
+
+        MATH!!!!
+
+        ACLK (32khz) = 32768 | Count (0FFFh) = 4096 | Divider = 8
+
+        Count / (ACLK / Divider)
+
+        4096 / (32768 / 8)
+
+        4096 / 4096 = 1 second ???
+
+    */
 
     allOff();
 }
@@ -146,4 +215,45 @@ void allOff(){
     OFFP4(P2S7);
     OFFP4(P2S8);
     OFFP4(P2S9);
+}
+
+void allOfNotSelected(){
+
+}
+// Pin 3 button interrupts
+#pragma vector = PORT3_VECTOR;
+__interrupt void P5_ISR(void){
+    if (P3IFG & BIT1){
+        pos++;         // increment position on the board (no variable yet)
+        P3IFG &= ~BIT1;
+    }
+    if (P3IFG & BIT2){
+        pos--;
+        P3IFG &= ~BIT2;
+    }
+    if (P3IFG & BIT3){
+        pos++;
+        P3IFG &= ~BIT3;
+    }
+    if (P3IFG & BIT4){
+        pos--;
+        P3IFG &= ~BIT4;
+    }
+    if (P3IFG & BIT5){
+        pos--;
+        P3IFG &= ~BIT6;
+    }
+    if (P3IFG & BIT6){
+        pos--;
+        P3IFG &= ~BIT6;
+    }
+}
+
+// Timer0_B interrupt
+#pragma vector = TIMER0_B1_VECTOR
+__interrupt void ISR_TB0_Overflow(void){
+
+   // add code here later for when 1 second happens
+
+   TB0CTL &= ~TBIFG;             // Clear IRQ Flag
 }
