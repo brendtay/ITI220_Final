@@ -1,0 +1,137 @@
+#include <msp430.h> 
+
+//Pin 1
+#define B0S0 BIT0
+#define P1S1 BIT1
+#define P1S2 BIT2
+#define P1S3 BIT3
+#define P1S4 BIT4
+#define P1S5 BIT5
+#define P1S6 BIT6
+#define P1S7 BIT7
+//Pin 2
+#define P1S8 BIT0
+#define P1S9 BIT1
+
+//Pin 6
+#define P2S1 BIT0
+#define P2S2 BIT1
+#define P2S3 BIT2
+#define P2S4 BIT3
+#define P2S5 BIT4
+//Pin 4
+#define P2S6 BIT0
+#define P2S7 BIT4
+#define P2S8 BIT6
+#define P2S9 BIT7
+
+#define SETP1(a, b, c ,d ,e ,f, h, i) (P1DIR |= ((a) | (b) | (c)| (d) | (e) | (f) | (h) | (i)))
+#define SETP2(a, b) (P2DIR |= ((a) | (b)))
+
+#define SETP6(a, b, c, d, e) (P6DIR |= ((a) | (b) | (c) | (d)))
+#define SETP4(a, b, c, d) (P4DIR |= ((a) | (b) | (c)))
+
+#define TOGGLEP1(x) (P1OUT ^= (x))
+#define TOGGLEP2(x) (P2OUT ^= (x))
+#define TOGGLEP4(x) (P4OUT ^= (x))
+#define TOGGLEP6(x) (P6OUT ^= (x))
+
+#define OFFP1(x) (P1OUT &= ~(x))
+#define OFFP2(x) (P2OUT &= ~(x))
+#define OFFP4(x) (P4OUT &= ~(x))
+#define OFFP6(x) (P6OUT &= ~(x))
+
+volatile unsigned int counter = 10;
+
+void allOff();
+
+int main(void)
+{
+	WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
+	PM5CTL0 &= ~LOCKLPM5;
+	SETP1(B0S0, P1S1, P1S2, P1S3, P1S4, P1S5, P1S6, P1S7);
+	SETP2(P1S8, P1S9);
+	SETP6(P2S1, P2S2, P2S3, P2S4, P2S5);
+	SETP4(P2S6, P2S7, P2S8, P2S9);
+	allOff();
+	TB0CTL = TBSSEL_1 | CNTL_1 | MC_2 | ID_3 | TBCLR | TBIE;
+	
+	__enable_interrupt();
+
+	while(1){
+	}
+
+}
+
+void allOff(){
+    //Player 1
+    OFFP1(B0S0);
+    OFFP1(P1S1);
+    OFFP1(P1S2);
+    OFFP1(P1S3);
+    OFFP1(P1S4);
+    OFFP1(P1S5);
+    OFFP1(P1S6);
+    OFFP1(P1S7);
+    OFFP2(P1S8);
+    OFFP2(P1S9);
+
+    //Player 2
+    OFFP6(P2S1);
+    OFFP6(P2S2);
+    OFFP6(P2S3);
+    OFFP6(P2S4);
+    OFFP6(P2S5);
+    OFFP4(P2S6);
+    OFFP4(P2S7);
+    OFFP4(P2S8);
+    OFFP4(P2S9);
+}
+
+
+     //Timer0_B interrupt test
+#pragma vector = TIMER0_B1_VECTOR
+__interrupt void ISR_TB0_Overflow(void){
+
+        TOGGLEP1(B0S0);
+        TOGGLEP1(P1S1);
+        TOGGLEP1(P1S2);
+        TOGGLEP1(P1S3);
+        TOGGLEP1(P1S4);
+        TOGGLEP1(P1S5);
+        TOGGLEP1(P1S6);
+        TOGGLEP1(P1S7);
+        TOGGLEP2(P1S8);
+        TOGGLEP2(P1S9);
+
+        TOGGLEP6(P2S1);
+        TOGGLEP6(P2S2);
+        TOGGLEP6(P2S3);
+        TOGGLEP6(P2S4);
+        TOGGLEP6(P2S5);
+        TOGGLEP4(P2S6);
+        TOGGLEP4(P2S7);
+        TOGGLEP4(P2S8);
+        TOGGLEP4(P2S9);
+
+   TB0CTL &= ~TBIFG;             // Clear IRQ Flag
+}
+
+
+
+
+/*
+     //Timer0_B 10 second test
+#pragma vector = TIMER0_B1_VECTOR
+__interrupt void ISR_TB0_Overflow(void){
+
+    if (counter == 1){
+        TOGGLEP1(LED1);
+        counter = 10;
+    }
+    else
+        counter--;
+
+    TB0CTL &= ~TBIFG;             // Clear IRQ Flag
+}
+*/

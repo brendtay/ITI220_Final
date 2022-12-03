@@ -1,8 +1,9 @@
 #include <msp430.h> 
+#include <stdbool.h>
 
 //defines leds
-
 //(Name = Player Number + Spot (1-9) number)
+//Player 1 (Pin 1.1 - 1.7 & Pin 2.0 - 2.1)
 //Pin 1
 #define P1S1 BIT1
 #define P1S2 BIT2
@@ -12,10 +13,10 @@
 #define P1S6 BIT6
 #define P1S7 BIT7
 //Pin 2
-#define P1S8 BIT1
-#define P1S9 BIT2
+#define P1S8 BIT0
+#define P1S9 BIT1
 
-//Player 2
+//Player 2 (Pin 6.0 - 6.4 & Pin 4.0, 4.4, 4.6, 4.7)
 //Pin 6
 #define P2S1 BIT0
 #define P2S2 BIT1
@@ -47,6 +48,11 @@
 #define ONP2(x) (P2OUT |= (x))
 #define OFFP2(x) (P2OUT &= ~(x))
 
+#define TOGGLEP1(x) (P1OUT ^= (x))  // temporary for testing
+#define TOGGLEP2(x) (P2OUT ^= (x))
+#define TOGGLEP4(x) (P4OUT ^= (x))
+#define TOGGLEP6(x) (P6OUT ^= (x))
+
 //Player 2 spots 1-9 are covered by pin 6 (bit 0-5) and pin 4 (bit 0 & 4 & 6 - 7)
 #define ONP4(x) (P4OUT |= (x))
 #define OFFP4(x) (P4OUT &= ~(x))
@@ -56,32 +62,174 @@
 
 void setup();
 void allOff();
+void delay();
+
+
+volatile int p1pos = 0;
+volatile int p2pos = 0;
+bool confirm = false;
 
 int main(void)
 {
-    bool gameOver = 0;
-    bool player = 0;      // 0 is player one, 1 is player two
-    
+    //bool gameOver = 1;
+    volatile int player = 1;
+
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
-    
+
     __enable_interrupt();
 
     setup();
 
     while (1){
-        if (gameOver == 0){
-            
+
+        // reset game if both players push both of their buttons
+//        if ((P3IN && BIT1) && (P3IN && BIT2) && (P3IN && BIT4) && (P3IN && BIT5))
+//            allOff();
+
+        if (player == 1){
+            // disable button interrupts for player 2
+            P3IE &= ~BIT4;
+            P3IE &= ~BIT5;
+            P3IE &= ~BIT6;
+
+            // enable button interrupts for player 1
+            P3IE |= BIT1;
+            P3IE |= BIT2;
+            P3IE |= BIT7;  // BIT4
+
+            // player 1 led pos logic
+            if(p1pos < 1)
+                p1pos = 1;
+            if(p1pos > 9)
+                p1pos = 9;
+
+            switch(p1pos){
+
+                case 1:
+//                    if (P1S1 off && P2S1 off){
+//                        ONP1(P1S1);
+//                        delay(10000);
+//                        OFFP1(P1S1);
+//                    }
+//                    if (P2S1 not on && confirm == true){
+//                        ONP1(P1S1);
+//                        p2pos = 2;
+//                    }
+//                    if (P1S1 on || P2S1 on){
+//                        p1pos = p1pos + 1;
+//                    }
+                    TOGGLEP1(P1S1);
+                    break;
+                case 2:
+                    TOGGLEP1(P1S2);
+                    break;
+                case 3:
+                    TOGGLEP1(P1S3);
+                    break;
+                case 4:
+                    TOGGLEP1(P1S4);
+                    break;
+                case 5:
+                    TOGGLEP1(P1S5);
+                    break;
+                case 6:
+                    TOGGLEP1(P1S6);
+                    break;
+                case 7:
+                    TOGGLEP1(P1S7);
+                    break;
+                case 8:
+                    TOGGLEP2(P1S8);
+                    break;
+                case 9:
+                    TOGGLEP2(P1S9);
+                    break;
+            }
         }
-        else{
-            
+        else if (player == 2){
+            // disable button interrupts for player 1
+            P3IE &= ~BIT1;
+            P3IE &= ~BIT2;
+            P3IE &= ~BIT7;
+
+            // enable button interrupts for player 2
+            P3IE |= BIT4;
+            P3IE |= BIT5;
+            P3IE |= BIT6;  // BIT4
+
+            // player 2 led pos logic
+            if(p2pos < 1)
+                p2pos = 1;
+            if(p2pos > 9)
+                p2pos = 9;
+
+            switch(p2pos){
+                case 1:
+//                    if (P1S1 off && P2S1 off){
+//                        ONP6(P2S1);
+//                        delay(10000);
+//                        OFFP6(P2S1);
+//                    }
+//                    if (P1S1 off && confirm == true){
+//                        ONP6(P2S1);
+//                        p2pos = 2;
+//                    }
+//                    if (P2S1 on || P1S1 on){
+//                        p2pos = p2pos + 1;
+//                    }
+                    TOGGLEP6(P2S1);
+                    break;
+                case 2:
+                    TOGGLEP6(P2S2);
+                    break;
+                case 3:
+                    TOGGLEP6(P2S3);
+                    break;
+                case 4:
+                    TOGGLEP6(P2S4);
+                    break;
+                case 5:
+                    TOGGLEP6(P2S5);
+                    break;
+                case 6:
+                    TOGGLEP4(P2S6);
+                    break;
+                case 7:
+                    TOGGLEP4(P2S7);
+                    break;
+                case 8:
+                    TOGGLEP4(P2S8);
+                    break;
+                case 9:
+                    TOGGLEP4(P2S9);
+                    break;
+                }
+
         }
+
+        if (confirm == true){
+            if (player == 2)
+                player = 1;
+            else
+                player = 2;
+
+            confirm = false;
+            //checkWin();  implement this later
+        }
+
+        //if (gameOver == 0){
+
+        //}
+        //else{
+
+        //}
     }
-
     return 0;
-
 }
 void setup(){
+
     PM5CTL0 &= ~LOCKLPM5;
+
     //Set output
     SETP1(P1S1, P1S2, P1S3, P1S4, P1S5, P1S6, P1S7);
     SETP2(P1S8, P1S9);
@@ -89,67 +237,67 @@ void setup(){
     SETP6(P2S1, P2S2, P2S3, P2S4, P2S5);
     SETP4(P2S6, P2S7, P2S8, P2S9);
 
-    //Button Pin 5.0
-    P5DIR |= ~BIT0;
-    P5OUT |= BIT0;
-    P5IES |= BIT0;
-    P5IFG &= ~BIT0;
-    P5IE |= BIT0;
-    //Button Pin 5.1
-    P5DIR |= ~BIT1;
-    P5OUT |= BIT1;
-    P5IES |= BIT1;
-    P5IFG &= ~BIT1;
-    P5IE |= BIT1;
-    //Button Pin 5.2
-    P5DIR |= ~BIT2;
-    P5OUT |= BIT2;
-    P5IES |= BIT2;
-    P5IFG &= ~BIT2;
-    P5IE |= BIT2;
-    //Button Pin 5.3
-    P5DIR |= ~BIT3;
-    P5OUT |= BIT3;
-    P5IES |= BIT3;
-    P5IFG &= ~BIT3;
-    P5IE |= BIT3;
-    //Button Pin 5.4
-    P5DIR |= ~BIT4;
-    P5OUT |= BIT4;
-    P5IES |= BIT4;
-    P5IFG &= ~BIT4;
-    P5IE |= BIT4;
-    //Button Pin 5.5
-    P5DIR |= ~BIT5;
-    P5OUT |= BIT5;
-    P5IES |= BIT5;
-    P5IFG &= ~BIT5;
-    P5IE |= BIT5;
+
     //Button Pin 3.1
     P3DIR |= ~BIT1;
     P3OUT |= BIT1;
     P3IES |= BIT1;
     P3IFG &= ~BIT1;
     P3IE |= BIT1;
-    
+
+    //Button Pin 3.2
+    P3DIR |= ~BIT2;
+    P3OUT |= BIT2;
+    P3IES |= BIT2;
+    P3IFG &= ~BIT2;
+    P3IE |= BIT2;
+
+    //Button Pin 3.3 (3.7 for cameron)
+//    P3DIR |= ~BIT3;
+//    P3OUT |= BIT3;
+//    P3IES |= BIT3;
+//    P3IFG &= ~BIT3;
+//    P3IE |= BIT3;
+    P3DIR |= ~BIT7;
+    P3OUT |= BIT7;
+    P3IES |= BIT7;
+    P3IFG &= ~BIT7;
+    P3IE |= BIT7;
+
+    //Button Pin 3.4
+    P3DIR |= ~BIT4;
+    P3OUT |= BIT4;
+    P3IES |= BIT4;
+    P3IFG &= ~BIT4;
+    P3IE |= BIT4;
+
+    //Button Pin 3.5
+    P3DIR |= ~BIT5;
+    P3OUT |= BIT5;
+    P3IES |= BIT5;
+    P3IFG &= ~BIT5;
+    P3IE |= BIT5;
+
+    //Button Pin 3.6
+    P3DIR |= ~BIT6;
+    P3OUT |= BIT6;
+    P3IES |= BIT6;
+    P3IFG &= ~BIT6;
+    P3IE |= BIT6;
+
+
     // Setup Timer0_B   (this was fun, thanks msp430fr2355.h)
     TB0CTL = TBSSEL_1 | CNTL_1 | MC_2 | ID_3 | TBCLR | TBIE;
-    
-    /* 
+
+    /*
         Timer B = ACLK (32khz) | Count (0FFFh) | Continuous mode | Divider (8) | Clear Timer Value | Interrupt Enable (might need to move this later to when the game starts)
-        
         MATH!!!!
-        
         ACLK (32khz) = 32768 | Count (0FFFh) = 4096 | Divider = 8
-        
         Count / (ACLK / Divider)
-        
         4096 / (32768 / 8)
-        
-        4096 / 4096 = 1 second ??? 
-        
+        4096 / 4096 = 1 second ???
     */
-    
+
     allOff();
 }
 
@@ -177,45 +325,60 @@ void allOff(){
     OFFP4(P2S9);
 }
 
-// Pin 5 button interrupts 
-#pragma vector = PORT5_VECTOR;
-__interrupt void P5_ISR(void){
-    if (P5IFG & BIT0){
-        pos++;          // increment position on the board (no variable yet)
-        P5IFG &= ~BIT0;
-    }
-    if (P5IFG & BIT1){
-        pos--;
-        P5IFG &= ~BIT1;
-    }
-    if (P5IFG & BIT2){
-        pos++;
-        P5IFG &= ~BIT2;
-    }
-    if (P5IFG & BIT3){
-        pos--;
-        P5IFG &= ~BIT3;
+void delay(int time){
+    volatile long i = time;
+
+    while(i != 0){
+        i = i - 1;
     }
 }
 
-// Pin 3 button interrupts
+// Pin 3 button interrupts bit 1-6
 #pragma vector = PORT3_VECTOR;
 __interrupt void P3_ISR(void){
     if (P3IFG & BIT1){
-        confirm = true;
+        P3IE &= ~BIT1;          // disable interrupt to prevent multiple input (doesn't really work though, needs help)
+        p1pos = p1pos + 1;
         P3IFG &= ~BIT1;
     }
     if (P3IFG & BIT2){
-        confirm = true;
+        P3IE &= ~BIT2;
+        p1pos = p1pos - 1;
         P3IFG &= ~BIT2;
     }
+//    if (P3IFG & BIT3){      //bit 7 for cameron
+//        P3IE &= ~BIT3;
+//        confirm = true;
+//        P3IFG &= ~BIT3;
+//    }
+    if (P3IFG & BIT7){
+        P3IE &= ~BIT7;
+        confirm = true;
+        P3IFG &= ~BIT7;
+    }
+    if (P3IFG & BIT4){
+        P3IE &= ~BIT4;
+        p2pos = p2pos + 1;
+        P3IFG &= ~BIT4;
+    }
+    if (P3IFG & BIT5){
+        P3IE &= ~BIT5;
+        p2pos = p2pos - 1;
+        P3IFG &= ~BIT5;
+    }
+    if (P3IFG & BIT6){
+        P3IE &= ~BIT6;
+        confirm = true;
+        P3IFG &= ~BIT6;
+    }
+
 }
 
 // Timer0_B interrupt
 #pragma vector = TIMER0_B1_VECTOR
-__interrupt void ISR_TB0_Overflow(void){
-    
-   // add code here later for when 1 second happens 
-    
-   TB0CTL &= ~TBIFG;             // Clear IRQ Flag
+__interrupt void ISR_TB0_OVERFLOW(void){
+
+   // ADD CODE HERE LATER FOR WHEN 1 SECOND HAPPENS
+
+   TB0CTL &= ~TBIFG;             // CLEAR IRQ FLAG
 }
