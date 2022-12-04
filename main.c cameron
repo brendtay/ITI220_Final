@@ -1,5 +1,6 @@
 #include <msp430.h> 
 #include <stdbool.h>
+#include <stdio.h>
 
 //defines leds
 //(Name = Player Number + Spot (1-9) number)
@@ -36,9 +37,9 @@
 
 
 //Sets output for p6 bit 1-5
-#define SETP6(a, b, c, d, e) (P6DIR |= ((a) | (b) | (c) | (d)))
+#define SETP6(a, b, c, d, e) (P6DIR |= ((a) | (b) | (c) | (d) | (e)))
 //Sets output for p4 bit 6-9
-#define SETP4(a, b, c, d) (P4DIR |= ((a) | (b) | (c)))
+#define SETP4(a, b, c, d) (P4DIR |= ((a) | (b) | (c) | (d)))
 
 
 
@@ -53,7 +54,7 @@
 #define TOGGLEP4(x) (P4OUT ^= (x))
 #define TOGGLEP6(x) (P6OUT ^= (x))
 
-//Player 2 spots 1-9 are covered by pin 6 (bit 0-5) and pin 4 (bit 0 & 4 & 6 - 7)
+//Player 2 spots 1-9 are covered by pin 6 (bit 0-4) and pin 4 (bit 0 & 4 & 6 - 7)
 #define ONP4(x) (P4OUT |= (x))
 #define OFFP4(x) (P4OUT &= ~(x))
 #define ONP6(x) (P6OUT |= (x))
@@ -62,19 +63,34 @@
 
 void setup();
 void allOff();
-void delay();
+void checkWin();
+void delay(volatile unsigned int duration);
 
 
-volatile int p1pos = 0;
-volatile int p2pos = 0;
+volatile unsigned int p1pos = 0;
+volatile unsigned int p2pos = 0;
+
 bool confirm = false;
+
+bool gameOver = false;
+bool p1win = false;
+bool p2win = false;
+bool tie = false;
+
+int p1state[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+int p2state[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+const char p1led[9] = {P1S1, P1S2, P1S3, P1S4, P1S5, P1S6, P1S7, P1S8, P1S9};
+const char p2led[9] = {P2S1, P2S2, P2S3, P2S4, P2S5, P2S6, P2S7, P2S8, P2S9};
+
+volatile int player = 1;
 
 int main(void)
 {
-    //bool gameOver = 1;
-    volatile int player = 1;
 
-    WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
+    volatile unsigned int i;
+
+    WDTCTL = WDTPW | WDTHOLD;                                                       // stop watchdog timer
 
     __enable_interrupt();
 
@@ -82,11 +98,83 @@ int main(void)
 
     while (1){
 
-        // reset game if both players push both of their buttons
-//        if ((P3IN && BIT1) && (P3IN && BIT2) && (P3IN && BIT4) && (P3IN && BIT5))
-//            allOff();
+        if (gameOver){
+            if (p1win){
+                for (i = 0; i < 9; i++){                                            // disable all p2 leds
+                    if (i <= 4)
+                        OFFP6(p2led[i]);
+                    else if (i >= 5 && i <= 8)
+                        OFFP4(p2led[i]);
+                }
+                for (i = 0; i < 9; i++){                                            // blink all active p1 leds
+                    if (i <= 6 && p1state[i] == 1){
+                        TOGGLEP1(p1led[i]);
+                        delay(10000);
+                    }
+                    else if (i >= 7 && i <= 8 && p1state[i] == 1){
+                        TOGGLEP2(p1led[i]);
+                        delay(10000);
+                    }
+                }
+            }
+            if (p2win){
+                for (i = 0; i < 9; i++){                                            // disable all p2 leds
+                    if (i <= 6)
+                        OFFP1(p1led[i]);
+                    else if (i >= 7 && i <= 8)
+                        OFFP2(p1led[i]);
+                }
+                for (i = 8; i > 0 ; i--){                                           // blink all active p2 leds
+                    if (i <= 4 && p2state[i] == 1){
+                        TOGGLEP6(p2led[i]);
+                        delay(10000);
+                    }
+                    else if (i >= 5 && i <= 8 && p2state[i] == 1){
+                        TOGGLEP4(p2led[i]);
+                        delay(10000);
+                    }
+                }
+            }
+            if (tie){
+                for (i = 0; i < 9; i++){                                            // blink all active p1 leds
+                    if (i <= 4 && p2state[i] == 1){
+                        TOGGLEP6(p2led[i]);
+                        delay(10000);
+                    }
+                    else if (i >= 5 && i <= 8 && p2state[i] == 1){
+                        TOGGLEP4(p2led[i]);
+                        delay(10000);
+                    }
+                }
+                for (i = 0; i < 9; i++){                                           // blink all active p1 leds
+                    if (i <= 6 && p1state[i] == 1){
+                        TOGGLEP1(p1led[i]);
+                        delay(20000);
+                    }
+                    else if (i >= 7 && i <= 8 && p1state[i] == 1){
+                        TOGGLEP2(p1led[i]);
+                        delay(20000);
+                    }
+                }
+            }
+        }
 
-        if (player == 1){
+        if (!(P3IN && BIT1) && !(P3IN && BIT2) && !(P3IN && BIT4) && !(P3IN && BIT5)){  // both players hold increment & decrement buttons to reset game
+            allOff();
+            for (i = 0; i < 9; i++){
+                p1state[i] = 0;
+                p2state[i] = 0;
+            }
+            player = 1;
+            p1pos = 0;
+            p2pos = 0;
+            gameOver = false;
+            p1win = false;
+            p2win = false;
+            TB0CTL |= TBIE;                                                         // re enable timer interrupt
+        }
+
+        if (!gameOver && player == 1){                                              // player 1 turn
             // disable button interrupts for player 2
             P3IE &= ~BIT4;
             P3IE &= ~BIT5;
@@ -97,56 +185,48 @@ int main(void)
             P3IE |= BIT2;
             P3IE |= BIT7;  // BIT4
 
-            // player 1 led pos logic
-            if(p1pos < 1)
-                p1pos = 1;
-            if(p1pos > 9)
-                p1pos = 9;
+            // player 1 led pos logic  **changed to unsigned** remove when brendan sees this
+//            if(p1pos < 0)
+//                p1pos = 0;
+            if(p1pos > 8)                                                           // player 1 led pos logic
+                p1pos = 8;
 
-            switch(p1pos){
+            for (i = 0; i < 9; i++){                                               // verify light state (sometimes they would get stuck from button interrupts)
+                if (p1state[i] == 0){
+                    if (i <= 6)
+                        OFFP1(p1led[i]);
+                    else if (i >= 7 && i <= 8)
+                        OFFP2(p1led[i]);
+                }
+                else if (p1state[i] == 1){
+                    if (i <= 6)
+                        ONP1(p1led[i]);
+                    else if (i >= 7 && i <= 8)
+                        ONP2(p1led[i]);
+                }
+            }
 
-                case 1:
-//                    if (P1S1 off && P2S1 off){
-//                        ONP1(P1S1);
-//                        delay(10000);
-//                        OFFP1(P1S1);
-//                    }
-//                    if (P2S1 not on && confirm == true){
-//                        ONP1(P1S1);
-//                        p2pos = 2;
-//                    }
-//                    if (P1S1 on || P2S1 on){
-//                        p1pos = p1pos + 1;
-//                    }
-                    TOGGLEP1(P1S1);
-                    break;
-                case 2:
-                    TOGGLEP1(P1S2);
-                    break;
-                case 3:
-                    TOGGLEP1(P1S3);
-                    break;
-                case 4:
-                    TOGGLEP1(P1S4);
-                    break;
-                case 5:
-                    TOGGLEP1(P1S5);
-                    break;
-                case 6:
-                    TOGGLEP1(P1S6);
-                    break;
-                case 7:
-                    TOGGLEP1(P1S7);
-                    break;
-                case 8:
-                    TOGGLEP2(P1S8);
-                    break;
-                case 9:
-                    TOGGLEP2(P1S9);
-                    break;
+            if (p2state[p1pos] == 0 && p1state[p1pos] == 0){                        // blink if neither player light is on
+                if (p1pos <= 6){
+                    delay(20000);
+                    TOGGLEP1(p1led[p1pos]);
+                    delay(20000);
+                }
+                else if (p1pos >= 7 && p1pos <= 8){
+                    delay(20000);
+                    TOGGLEP2(p1led[p1pos]);
+                    delay(20000);
+                }
+            }
+
+            if (p1state[p1pos] == 1 || p2state[p1pos] == 1){                         // increment pos if place is taken
+                p1pos = p1pos + 1;
+                if (p1pos >= 8)
+                    p1pos = 0;
             }
         }
-        else if (player == 2){
+
+        else if (!gameOver && player == 2){                                         // player 2 turn
             // disable button interrupts for player 1
             P3IE &= ~BIT1;
             P3IE &= ~BIT2;
@@ -157,80 +237,100 @@ int main(void)
             P3IE |= BIT5;
             P3IE |= BIT6;  // BIT4
 
-            // player 2 led pos logic
-            if(p2pos < 1)
-                p2pos = 1;
-            if(p2pos > 9)
-                p2pos = 9;
+            // player 2 led pos logic  **changed to unsigned**  remove when brendan sees
+//            if(p2pos < 0)
+//                p2pos = 0;
+            if(p2pos > 8)                                                           // player 2 led pos logic
+                p2pos = 8;
 
-            switch(p2pos){
-                case 1:
-//                    if (P1S1 off && P2S1 off){
-//                        ONP6(P2S1);
-//                        delay(10000);
-//                        OFFP6(P2S1);
-//                    }
-//                    if (P1S1 off && confirm == true){
-//                        ONP6(P2S1);
-//                        p2pos = 2;
-//                    }
-//                    if (P2S1 on || P1S1 on){
-//                        p2pos = p2pos + 1;
-//                    }
-                    TOGGLEP6(P2S1);
-                    break;
-                case 2:
-                    TOGGLEP6(P2S2);
-                    break;
-                case 3:
-                    TOGGLEP6(P2S3);
-                    break;
-                case 4:
-                    TOGGLEP6(P2S4);
-                    break;
-                case 5:
-                    TOGGLEP6(P2S5);
-                    break;
-                case 6:
-                    TOGGLEP4(P2S6);
-                    break;
-                case 7:
-                    TOGGLEP4(P2S7);
-                    break;
-                case 8:
-                    TOGGLEP4(P2S8);
-                    break;
-                case 9:
-                    TOGGLEP4(P2S9);
-                    break;
+            for (i = 0; i < 9; i++){
+                if (p2state[i] == 0){
+                    if (i <= 4)
+                        OFFP6(p2led[i]);
+                    else if (i >= 5 && i <= 8)
+                        OFFP4(p2led[i]);
                 }
+                else if (p2state[i] == 1){
+                    if (i <= 4)
+                        ONP6(p2led[i]);
+                    else if (i >= 5 && i <= 8)
+                        ONP4(p2led[i]);
+                }
+            }
 
+            if (p2state[p2pos] == 0 && p1state[p2pos] == 0){                        // blink if neither player light is on
+                if (p2pos <= 4){
+                    delay(20000);
+                    TOGGLEP6(p2led[p2pos]);
+                    delay(20000);
+                }
+                else if (p2pos >= 5 && p2pos <= 8){
+                    delay(20000);
+                    TOGGLEP4(p2led[p2pos]);
+                    delay(20000);
+                }
+            }
+
+            if (p1state[p2pos] == 1 || p2state[p2pos] == 1){                         // increment pos if place is taken
+                p2pos = p2pos + 1;
+                if (p2pos >= 8)
+                    p2pos = 0;
+            }
         }
 
-        if (confirm == true){
-            if (player == 2)
-                player = 1;
-            else
-                player = 2;
+        if (!gameOver && confirm == true){                                          // if confirm button is pressed
+            if (player == 2){                                                       // ... on player 2's turn
+                p2state[p2pos] = 1;
+
+                if (p2pos <= 4)
+                    ONP6(p2led[p2pos]);                                             // change state of p2 led
+                else if (p2pos >= 5 && p2pos <= 8)
+                    ONP4(p2led[p2pos]);
+
+                p1pos = 0;                                                          // reset player 1 pos
+                player = 1;                                                         // change players
+            }
+            else{                                                                   // ... on player 1's turn
+                p1state[p1pos] = 1;
+
+                if (p1pos <= 6)
+                    ONP1(p1led[p1pos]);                                             // change state of p1 led
+                else if (p1pos >= 7 && p1pos <= 8)
+                    ONP2(p1led[p1pos]);
+
+                p2pos = 0;                                                          // reset player 2 pos
+                player = 2;                                                         // change players
+            }
 
             confirm = false;
-            //checkWin();  implement this later
         }
-
-        //if (gameOver == 0){
-
-        //}
-        //else{
-
-        //}
     }
-    return 0;
 }
+
+void checkWin(){            // not complete
+    volatile unsigned int total = 0;
+    volatile unsigned int i;
+
+    if (((p1state[0] + p1state[1] + p1state[2]) == 3) || ((p1state[3] + p1state[4] + p1state[5]) == 3) || ((p1state[6] + p1state[7] + p1state[8]) == 3) || ((p1state[0] + p1state[4] + p1state[8]) == 3) || ((p1state[2] + p1state[4] + p1state[6]) == 3))
+        p1win = true;
+    if (((p2state[0] + p2state[1] + p2state[2]) == 3) || ((p2state[3] + p2state[4] + p2state[5]) == 3) || ((p2state[6] + p2state[7] + p2state[8]) == 3) || ((p2state[0] + p2state[4] + p2state[8]) == 3) || ((p2state[2] + p2state[4] + p2state[6]) == 3))
+        p2win = true;
+    for (i = 0; i < 9; i++){
+        if (p1state[i] == 1 || p2state[i] == 1)
+            total = total + 1;
+    }
+    if (total == 9)
+        tie = true;
+
+    if (tie || p1win || p2win)
+        gameOver = true;
+}
+
 void setup(){
 
     PM5CTL0 &= ~LOCKLPM5;
 
-    //Set output
+    //Set outputs
     SETP1(P1S1, P1S2, P1S3, P1S4, P1S5, P1S6, P1S7);
     SETP2(P1S8, P1S9);
 
@@ -238,21 +338,21 @@ void setup(){
     SETP4(P2S6, P2S7, P2S8, P2S9);
 
 
-    //Button Pin 3.1
+    //Button Pin 3.1 P1 increment
     P3DIR |= ~BIT1;
     P3OUT |= BIT1;
     P3IES |= BIT1;
     P3IFG &= ~BIT1;
     P3IE |= BIT1;
 
-    //Button Pin 3.2
+    //Button Pin 3.2 P1 decrement
     P3DIR |= ~BIT2;
     P3OUT |= BIT2;
     P3IES |= BIT2;
     P3IFG &= ~BIT2;
     P3IE |= BIT2;
 
-    //Button Pin 3.3 (3.7 for cameron)
+    //Button Pin 3.3 (3.7 for cameron) P1 confirm
 //    P3DIR |= ~BIT3;
 //    P3OUT |= BIT3;
 //    P3IES |= BIT3;
@@ -264,21 +364,21 @@ void setup(){
     P3IFG &= ~BIT7;
     P3IE |= BIT7;
 
-    //Button Pin 3.4
+    //Button Pin 3.4 P2 decrement
     P3DIR |= ~BIT4;
     P3OUT |= BIT4;
     P3IES |= BIT4;
     P3IFG &= ~BIT4;
     P3IE |= BIT4;
 
-    //Button Pin 3.5
+    //Button Pin 3.5 P2 increment
     P3DIR |= ~BIT5;
     P3OUT |= BIT5;
     P3IES |= BIT5;
     P3IFG &= ~BIT5;
     P3IE |= BIT5;
 
-    //Button Pin 3.6
+    //Button Pin 3.6 P2 confirm
     P3DIR |= ~BIT6;
     P3OUT |= BIT6;
     P3IES |= BIT6;
@@ -325,19 +425,16 @@ void allOff(){
     OFFP4(P2S9);
 }
 
-void delay(int time){
-    volatile long i = time;
-
-    while(i != 0){
-        i = i - 1;
-    }
+void delay(volatile unsigned int duration){
+    while (duration != 0)
+        duration--;
 }
 
 // Pin 3 button interrupts bit 1-6
 #pragma vector = PORT3_VECTOR;
 __interrupt void P3_ISR(void){
     if (P3IFG & BIT1){
-        P3IE &= ~BIT1;          // disable interrupt to prevent multiple input (doesn't really work though, needs help)
+        P3IE &= ~BIT1;                                                              // disable interrupt to prevent multiple input (kind of works)
         p1pos = p1pos + 1;
         P3IFG &= ~BIT1;
     }
@@ -353,22 +450,24 @@ __interrupt void P3_ISR(void){
 //    }
     if (P3IFG & BIT7){
         P3IE &= ~BIT7;
-        confirm = true;
+        if (p1state[p1pos] == 0 && p2state[p1pos] == 0)                            // only allow player to confirm if spot is not taken (fail safe)
+            confirm = true;
         P3IFG &= ~BIT7;
     }
     if (P3IFG & BIT4){
         P3IE &= ~BIT4;
-        p2pos = p2pos + 1;
+        p2pos = p2pos - 1;
         P3IFG &= ~BIT4;
     }
     if (P3IFG & BIT5){
         P3IE &= ~BIT5;
-        p2pos = p2pos - 1;
+        p2pos = p2pos + 1;
         P3IFG &= ~BIT5;
     }
     if (P3IFG & BIT6){
         P3IE &= ~BIT6;
-        confirm = true;
+        if (p1state[p2pos] == 0 && p2state[p2pos] == 0)                             // only allow player to confirm if spot is not taken (fail safe)
+            confirm = true;
         P3IFG &= ~BIT6;
     }
 
@@ -378,7 +477,42 @@ __interrupt void P3_ISR(void){
 #pragma vector = TIMER0_B1_VECTOR
 __interrupt void ISR_TB0_OVERFLOW(void){
 
-   // ADD CODE HERE LATER FOR WHEN 1 SECOND HAPPENS
+   //checkWin();
 
-   TB0CTL &= ~TBIFG;             // CLEAR IRQ FLAG
+    volatile unsigned int total = 0;
+    volatile unsigned int i;
+
+    // player 1 win conditions
+    if (((p1state[0] + p1state[1] + p1state[2]) == 3) || ((p1state[3] + p1state[4] + p1state[5]) == 3) || ((p1state[6] + p1state[7] + p1state[8]) == 3))        // horizontal conditions
+        p1win = true;
+    if (((p1state[0] + p1state[3] + p1state[6]) == 3) || ((p1state[1] + p1state[4] + p1state[7]) == 3) || ((p1state[2] + p1state[5] + p1state[8]) == 3))        // vertical conditions
+        p1win = true;
+    if (((p1state[0] + p1state[4] + p1state[8]) == 3) || ((p1state[2] + p1state[4] + p1state[6]) == 3))                                                         // diagonal conditions
+        p1win = true;
+
+    // player 2 win conditions
+    if (((p2state[0] + p2state[1] + p2state[2]) == 3) || ((p2state[3] + p2state[4] + p2state[5]) == 3) || ((p2state[6] + p2state[7] + p2state[8]) == 3))        // horizontal conditions
+        p2win = true;
+    if (((p2state[0] + p2state[3] + p2state[6]) == 3) || ((p2state[1] + p2state[4] + p2state[7]) == 3) || ((p2state[2] + p2state[5] + p2state[8]) == 3))        // vertical conditions
+        p2win = true;
+    if (((p2state[0] + p2state[4] + p2state[8]) == 3) || ((p2state[2] + p2state[4] + p2state[6]) == 3))                                                         // diagonal conditions
+        p2win = true;
+
+
+    // tie condition
+    for (i = 0; i < 9; i++){
+        if (p1state[i] == 1 || p2state[i] == 1)
+            total = total + 1;
+    }
+
+    if (total == 9)                                                          // if 9 total led are on, tie
+        tie = true;
+
+    if (tie || p1win || p2win){
+        gameOver = true;
+        TB0CTL &= ~TBIE;                                                     // disable timer interrupt to prevent infinite interrupt loop for the win condition
+    }
+
+
+   TB0CTL &= ~TBIFG;                                                         // CLEAR IRQ FLAG
 }
